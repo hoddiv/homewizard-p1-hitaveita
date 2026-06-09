@@ -158,6 +158,49 @@ and **edit two things**:
 
 ---
 
+## Optional: district-heating monitoring
+
+`packages/hitaveita_monitor.yaml` is an **optional** add-on package that builds derived monitoring on
+top of the base sensors — useful for spotting **high return temperature**, **poor heat extraction
+(low delta-T)**, and **continuous / abnormal flow**. It does not change the base package.
+
+> This is **not a billing or certified-measurement system** — just a convenience monitor. **Tune the
+> thresholds per house**; the suggested values are only starting points.
+
+**Install:** drop `packages/hitaveita_monitor.yaml` into `config/packages/` (same as the base
+package) and restart. It depends on the base package's entity_ids
+`sensor.hitaveita_framrasarhiti` (supply), `sensor.hitaveita_bakrasarhiti` (return) and
+`sensor.hitaveita_rennsli` (flow); if yours differ, update the references at the top of the file.
+
+**Tunable helpers** (set them in the UI):
+
+- `input_number.hitaveita_high_return_threshold` (°C)
+- `input_number.hitaveita_min_active_flow_l_min` (L/min)
+- `input_number.hitaveita_low_delta_t_threshold` (°C)
+- `input_number.hitaveita_continuous_flow_l_min` (L/min)
+
+**Derived entities:**
+
+- `sensor.hitaveita_delta_t` — supply − return (no `device_class`: a temperature *difference* must not
+  be unit-converted like an absolute temperature).
+- `binary_sensor.hitaveita_flow_active` — flow above the minimum-active threshold.
+- `binary_sensor.hitaveita_high_return_temperature` — return above threshold **and** flow active.
+- `binary_sensor.hitaveita_poor_heat_extraction` — delta-T below threshold **and** flow active.
+- `binary_sensor.hitaveita_continuous_flow_candidate` — flow above the continuous-flow threshold.
+
+**Alerts are deliberately time-based.** The package ships **example automations (commented out)** that
+fire only after a condition persists — high return / poor extraction for **30 min**, continuous flow
+for **6 h** — to avoid false alarms. Uncomment them, replace the placeholder
+`notify.mobile_app_your_phone` with your own notify service, then enable.
+
+**Why "high return only while flow is active":** a warm return reading with no draw is just standing
+water cooling slowly, not a problem — the alert is only meaningful while hot water is actually moving.
+
+*Glossary: framrás(arhiti) = supply temperature, bakrás(arhiti) = return temperature,
+delta-T = supply − return.*
+
+---
+
 ## Security note
 
 This relies on the HomeWizard **local API v1, which is unauthenticated** on your LAN — anything that

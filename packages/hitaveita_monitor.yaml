@@ -1,0 +1,189 @@
+# Hitaveita / district-heating MONITORING (optional add-on package)
+# ===========================================================================
+# Optional. Builds derived monitoring on top of the base package
+# (packages/hitaveita.yaml). It does NOT change the base package.
+#
+# Icelandic <-> English glossary:
+#   framrás / framrásarhiti = supply (flow line) temperature
+#   bakrás  / bakrásarhiti  = return temperature
+#   delta-T                 = supply temperature minus return temperature
+#   rennsli                 = flow
+#
+# This is NOT a billing or certified-measurement system — it is a convenience
+# monitor. Thresholds MUST be tuned per house. Alerts are time-debounced (see the
+# example automations) to avoid false alarms, and "high return temperature" only
+# fires while flow is active.
+#
+# DEPENDENCY — source entity_ids (from the base package's Icelandic names):
+#   sensor.hitaveita_framrasarhiti   (supply temperature, °C)
+#   sensor.hitaveita_bakrasarhiti    (return temperature, °C)
+#   sensor.hitaveita_rennsli         (flow, L/min)
+# If your install generated different entity_ids (check Developer Tools ->
+# States), update the references below to match.
+# ===========================================================================
+
+# --- Tunable thresholds (have sensible `initial:` defaults; tune in the UI) ---
+input_number:
+  hitaveita_high_return_threshold:
+    name: "Hitaveita – high return temperature threshold"
+    initial: 40
+    min: 20
+    max: 90
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:thermometer-alert
+
+  hitaveita_min_active_flow_l_min:
+    name: "Hitaveita – minimum active flow"
+    initial: 0.5
+    min: 0
+    max: 30
+    step: 0.1
+    unit_of_measurement: "L/min"
+    mode: box
+    icon: mdi:water
+
+  hitaveita_low_delta_t_threshold:
+    name: "Hitaveita – low delta-T threshold"
+    initial: 15
+    min: 0
+    max: 60
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: box
+    icon: mdi:delta
+
+  hitaveita_continuous_flow_l_min:
+    name: "Hitaveita – continuous flow threshold"
+    initial: 0.5
+    min: 0
+    max: 30
+    step: 0.1
+    unit_of_measurement: "L/min"
+    mode: box
+    icon: mdi:water-pump
+
+template:
+  - sensor:
+      # delta-T = supply - return. NOTE: no device_class on purpose — this is a
+      # temperature *difference*, and device_class: temperature would apply the
+      # absolute °C<->°F conversion (with the +32 offset), which is wrong for a delta.
+      # Availability intentionally depends ONLY on the two source temperatures.
+      - name: "Hitaveita delta-T"
+        unique_id: hitaveita_delta_t
+        unit_of_measurement: "°C"
+        state_class: measurement
+        icon: mdi:delta
+        availability: >-
+          {{ has_value('sensor.hitaveita_framrasarhiti') and has_value('sensor.hitaveita_bakrasarhiti') }}
+        state: >-
+          {{ (states('sensor.hitaveita_framrasarhiti') | float(0)
+              - states('sensor.hitaveita_bakrasarhiti') | float(0)) | round(1) }}
+
+  - binary_sensor:
+      # Is hot water actively being drawn right now?
+      - name: "Hitaveita flow active"
+        unique_id: hitaveita_flow_active
+        icon: mdi:water-check
+        availability: >-
+          {{ has_value('sensor.hitaveita_rennsli')
+             and has_value('input_number.hitaveita_min_active_flow_l_min') }}
+        state: >-
+          {{ states('sensor.hitaveita_rennsli') | float(0)
+             > states('input_number.hitaveita_min_active_flow_l_min') | float(0) }}
+
+      # Return temperature too high — only meaningful WHILE flow is active.
+      - name: "Hitaveita high return temperature"
+        unique_id: hitaveita_high_return_temperature
+        device_class: problem
+        icon: mdi:thermometer-alert
+        availability: >-
+          {{ has_value('sensor.hitaveita_bakrasarhiti')
+             and has_value('input_number.hitaveita_high_return_threshold')
+             and has_value('binary_sensor.hitaveita_flow_active') }}
+        state: >-
+          {{ is_state('binary_sensor.hitaveita_flow_active', 'on')
+             and (states('sensor.hitaveita_bakrasarhiti') | float(0)
+                  > states('input_number.hitaveita_high_return_threshold') | float(0)) }}
+
+      # Poor heat extraction — low delta-T while flow is active.
+      - name: "Hitaveita poor heat extraction"
+        unique_id: hitaveita_poor_heat_extraction
+        device_class: problem
+        icon: mdi:heat-wave
+        availability: >-
+          {{ has_value('sensor.hitaveita_delta_t')
+             and has_value('input_number.hitaveita_low_delta_t_threshold')
+             and has_value('binary_sensor.hitaveita_flow_active') }}
+        state: >-
+          {{ is_state('binary_sensor.hitaveita_flow_active', 'on')
+             and (states('sensor.hitaveita_delta_t') | float(999)
+                  < states('input_number.hitaveita_low_delta_t_threshold') | float(0)) }}
+
+      # Sustained flow above the continuous-flow threshold (possible leak / stuck valve).
+      - name: "Hitaveita continuous flow candidate"
+        unique_id: hitaveita_continuous_flow_candidate
+        device_class: problem
+        icon: mdi:water-alert
+        availability: >-
+          {{ has_value('sensor.hitaveita_rennsli')
+             and has_value('input_number.hitaveita_continuous_flow_l_min') }}
+        state: >-
+          {{ states('sensor.hitaveita_rennsli') | float(0)
+             > states('input_number.hitaveita_continuous_flow_l_min') | float(0) }}
+
+# ===========================================================================
+# EXAMPLE automations — intentionally COMMENTED OUT.
+# To use: uncomment, replace `notify.mobile_app_your_phone` with YOUR notify
+# service, tune the thresholds (helpers above), then reload/restart. They are
+# time-debounced via `for:` so brief spikes don't alert.
+# ===========================================================================
+# automation:
+#   - alias: "Hitaveita – high return temperature (example)"
+#     description: "Return temp above threshold while flow is active, sustained 30 min."
+#     trigger:
+#       - platform: state
+#         entity_id: binary_sensor.hitaveita_high_return_temperature
+#         to: "on"
+#         for: "00:30:00"
+#     action:
+#       - service: notify.mobile_app_your_phone   # <-- replace with your notify service
+#         data:
+#           title: "Hitaveita: high return temperature"
+#           message: >-
+#             Return (bakrásarhiti) {{ states('sensor.hitaveita_bakrasarhiti') }}°C,
+#             delta-T {{ states('sensor.hitaveita_delta_t') }}°C.
+#     mode: single
+#
+#   - alias: "Hitaveita – poor heat extraction (example)"
+#     description: "Low delta-T while flow is active, sustained 30 min."
+#     trigger:
+#       - platform: state
+#         entity_id: binary_sensor.hitaveita_poor_heat_extraction
+#         to: "on"
+#         for: "00:30:00"
+#     action:
+#       - service: notify.mobile_app_your_phone   # <-- replace with your notify service
+#         data:
+#           title: "Hitaveita: poor heat extraction (low delta-T)"
+#           message: >-
+#             delta-T {{ states('sensor.hitaveita_delta_t') }}°C while drawing
+#             {{ states('sensor.hitaveita_rennsli') }} L/min.
+#     mode: single
+#
+#   - alias: "Hitaveita – continuous flow (example)"
+#     description: "Flow above continuous-flow threshold for 6 hours (possible abnormal usage)."
+#     trigger:
+#       - platform: state
+#         entity_id: binary_sensor.hitaveita_continuous_flow_candidate
+#         to: "on"
+#         for: "06:00:00"
+#     action:
+#       - service: notify.mobile_app_your_phone   # <-- replace with your notify service
+#         data:
+#           title: "Hitaveita: continuous flow"
+#           message: >-
+#             Flow has been above the continuous-flow threshold for 6 hours
+#             ({{ states('sensor.hitaveita_rennsli') }} L/min).
+#     mode: single

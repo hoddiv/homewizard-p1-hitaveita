@@ -22,10 +22,11 @@
 # States), update the references below to match.
 # ===========================================================================
 
-# --- Tunable thresholds (set these in the UI; suggested starting points in comments) ---
+# --- Tunable thresholds (have sensible `initial:` defaults; tune in the UI) ---
 input_number:
-  hitaveita_high_return_threshold:        # suggested start: ~40 °C (tune per house)
+  hitaveita_high_return_threshold:
     name: "Hitaveita – high return temperature threshold"
+    initial: 40
     min: 20
     max: 90
     step: 0.5
@@ -33,8 +34,9 @@ input_number:
     mode: box
     icon: mdi:thermometer-alert
 
-  hitaveita_min_active_flow_l_min:        # suggested start: ~0.5 L/min (above = actively drawing)
+  hitaveita_min_active_flow_l_min:
     name: "Hitaveita – minimum active flow"
+    initial: 0.5
     min: 0
     max: 30
     step: 0.1
@@ -42,8 +44,9 @@ input_number:
     mode: box
     icon: mdi:water
 
-  hitaveita_low_delta_t_threshold:        # suggested start: ~15 °C (delta below = poor extraction)
+  hitaveita_low_delta_t_threshold:
     name: "Hitaveita – low delta-T threshold"
+    initial: 15
     min: 0
     max: 60
     step: 0.5
@@ -51,8 +54,9 @@ input_number:
     mode: box
     icon: mdi:delta
 
-  hitaveita_continuous_flow_l_min:        # suggested start: ~0.5 L/min (sustained flow = possible abnormal usage)
+  hitaveita_continuous_flow_l_min:
     name: "Hitaveita – continuous flow threshold"
+    initial: 0.5
     min: 0
     max: 30
     step: 0.1
@@ -65,6 +69,7 @@ template:
       # delta-T = supply - return. NOTE: no device_class on purpose — this is a
       # temperature *difference*, and device_class: temperature would apply the
       # absolute °C<->°F conversion (with the +32 offset), which is wrong for a delta.
+      # Availability intentionally depends ONLY on the two source temperatures.
       - name: "Hitaveita delta-T"
         unique_id: hitaveita_delta_t
         unit_of_measurement: "°C"
@@ -81,7 +86,9 @@ template:
       - name: "Hitaveita flow active"
         unique_id: hitaveita_flow_active
         icon: mdi:water-check
-        availability: "{{ has_value('sensor.hitaveita_rennsli') }}"
+        availability: >-
+          {{ has_value('sensor.hitaveita_rennsli')
+             and has_value('input_number.hitaveita_min_active_flow_l_min') }}
         state: >-
           {{ states('sensor.hitaveita_rennsli') | float(0)
              > states('input_number.hitaveita_min_active_flow_l_min') | float(0) }}
@@ -92,7 +99,9 @@ template:
         device_class: problem
         icon: mdi:thermometer-alert
         availability: >-
-          {{ has_value('sensor.hitaveita_bakrasarhiti') and has_value('sensor.hitaveita_rennsli') }}
+          {{ has_value('sensor.hitaveita_bakrasarhiti')
+             and has_value('input_number.hitaveita_high_return_threshold')
+             and has_value('binary_sensor.hitaveita_flow_active') }}
         state: >-
           {{ is_state('binary_sensor.hitaveita_flow_active', 'on')
              and (states('sensor.hitaveita_bakrasarhiti') | float(0)
@@ -104,7 +113,9 @@ template:
         device_class: problem
         icon: mdi:heat-wave
         availability: >-
-          {{ has_value('sensor.hitaveita_delta_t') and has_value('sensor.hitaveita_rennsli') }}
+          {{ has_value('sensor.hitaveita_delta_t')
+             and has_value('input_number.hitaveita_low_delta_t_threshold')
+             and has_value('binary_sensor.hitaveita_flow_active') }}
         state: >-
           {{ is_state('binary_sensor.hitaveita_flow_active', 'on')
              and (states('sensor.hitaveita_delta_t') | float(999)
@@ -115,7 +126,9 @@ template:
         unique_id: hitaveita_continuous_flow_candidate
         device_class: problem
         icon: mdi:water-alert
-        availability: "{{ has_value('sensor.hitaveita_rennsli') }}"
+        availability: >-
+          {{ has_value('sensor.hitaveita_rennsli')
+             and has_value('input_number.hitaveita_continuous_flow_l_min') }}
         state: >-
           {{ states('sensor.hitaveita_rennsli') | float(0)
              > states('input_number.hitaveita_continuous_flow_l_min') | float(0) }}

@@ -32,7 +32,7 @@ appear there the way gas/water meters do.
 ## Observed behavior
 
 `GET /api/v1/telegram` includes the heat meter (example lines — **illustrative / redacted**, not a
-real telegram; channel may be `0-1`, `0-2`, or `0-3` on other setups):
+real telegram; channel may be `0-1`, `0-2`, `0-3`, or `0-4` on other setups):
 
 ```text
 0-1:24.1.0(...)              # MBus device type / id  (redacted)

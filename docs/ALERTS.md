@@ -53,7 +53,7 @@ then tune the `for:` durations and the helper thresholds to taste.
       to: "on"
       for: "00:30:00"
   action:
-    - service: notify.mobile_app_your_phone   # <-- replace with YOUR notify service
+    - action: notify.mobile_app_your_phone   # <-- replace with YOUR notify service
       data:
         title: "Hitaveita: high return temperature"
         message: "Return temperature has been high (while drawing) for 30 minutes."
@@ -67,7 +67,7 @@ then tune the `for:` durations and the helper thresholds to taste.
       to: "on"
       for: "00:30:00"
   action:
-    - service: notify.mobile_app_your_phone   # <-- replace with YOUR notify service
+    - action: notify.mobile_app_your_phone   # <-- replace with YOUR notify service
       data:
         title: "Hitaveita: poor heat extraction (low delta-T)"
         message: "delta-T has stayed low while drawing hot water for 30 minutes."
@@ -81,7 +81,7 @@ then tune the `for:` durations and the helper thresholds to taste.
       to: "on"
       for: "06:00:00"
   action:
-    - service: notify.mobile_app_your_phone   # <-- replace with YOUR notify service
+    - action: notify.mobile_app_your_phone   # <-- replace with YOUR notify service
       data:
         title: "Hitaveita: continuous flow"
         message: "Flow has stayed above the continuous-flow threshold for 6 hours."

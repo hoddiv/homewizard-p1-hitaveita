@@ -29,9 +29,9 @@ rest:
         state_class: total_increasing
         unit_of_measurement: "m³"
         availability: >-
-          {{ value | regex_findall('0-1:24\.2\.1\((-?\d+(?:\.\d+)?)\*m3\)') | length > 0 }}
+          {{ (value or '') | regex_findall('0-1:24\.2\.1\((-?\d+(?:\.\d+)?)\*m3\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.1\((-?\d+(?:\.\d+)?)\*m3\)') %}
+          {% set m = (value or '') | regex_findall('0-1:24\.2\.1\((-?\d+(?:\.\d+)?)\*m3\)') %}
           {{ (m[0] | float) if m else none }}
 
       - name: "Hitaveita – Rennsli"           # -> sensor.hitaveita_rennsli
@@ -42,9 +42,9 @@ rest:
         # Conversion: m³/h * 1000 / 60 = L/min.
         unit_of_measurement: "L/min"
         availability: >-
-          {{ value | regex_findall('0-1:24\.2\.2\((-?\d+(?:\.\d+)?)\*m3/h\)') | length > 0 }}
+          {{ (value or '') | regex_findall('0-1:24\.2\.2\((-?\d+(?:\.\d+)?)\*m3/h\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.2\((-?\d+(?:\.\d+)?)\*m3/h\)') %}
+          {% set m = (value or '') | regex_findall('0-1:24\.2\.2\((-?\d+(?:\.\d+)?)\*m3/h\)') %}
           {{ ((m[0] | float) * 1000 / 60) | round(1) if m else none }}
 
       - name: "Hitaveita – Framrásarhiti"     # -> sensor.hitaveita_framrasarhiti
@@ -52,9 +52,9 @@ rest:
         device_class: temperature
         unit_of_measurement: "°C"
         availability: >-
-          {{ value | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
+          {{ (value or '') | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') %}
+          {% set m = (value or '') | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') %}
           {{ (m[0] | float) if m else none }}
 
       - name: "Hitaveita – Bakrásarhiti"      # -> sensor.hitaveita_bakrasarhiti
@@ -62,9 +62,9 @@ rest:
         device_class: temperature
         unit_of_measurement: "°C"
         availability: >-
-          {{ value | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
+          {{ (value or '') | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') %}
+          {% set m = (value or '') | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') %}
           {{ (m[0] | float) if m else none }}
 
       - name: "Hitaveita – Orka"              # -> sensor.hitaveita_orka
@@ -78,9 +78,9 @@ rest:
         device_class: energy
         unit_of_measurement: "Wh"
         availability: >-
-          {{ value | regex_findall('0-1:24\.2\.5\((-?\d+(?:\.\d+)?)\*Wh\)') | length > 0 }}
+          {{ (value or '') | regex_findall('0-1:24\.2\.5\((-?\d+(?:\.\d+)?)\*Wh\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.5\((-?\d+(?:\.\d+)?)\*Wh\)') %}
+          {% set m = (value or '') | regex_findall('0-1:24\.2\.5\((-?\d+(?:\.\d+)?)\*Wh\)') %}
           {{ (m[0] | float) if m else none }}
 
 # Fixed tariff price. There is no live price API for hitaveita; set this in the UI.

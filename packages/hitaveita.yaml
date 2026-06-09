@@ -10,6 +10,12 @@
 # Why scrape the telegram: the P1 does NOT parse an attached MBus heat/water
 # meter into /api/v1/data ("external": []). The raw telegram does expose it on
 # 0-1:24.2.x, so we read it from there.
+#
+# Robustness notes:
+#   - Each sensor has an `availability:` template: if its telegram line is missing
+#     the sensor goes UNAVAILABLE instead of reporting a misleading 0.
+#   - Numbers are matched with a strict pattern (-?\d+(?:\.\d+)?) per unit suffix.
+#   - value_template returns `none` (-> Unknown) when nothing matches; never "0".
 # ---------------------------------------------------------------------------
 
 rest:
@@ -22,45 +28,60 @@ rest:
         device_class: water
         state_class: total_increasing
         unit_of_measurement: "m³"
+        availability: >-
+          {{ value | regex_findall('0-1:24\.2\.1\((-?\d+(?:\.\d+)?)\*m3\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.1\(([0-9.]+)\*m3\)') %}
-          {{ (m[0] | float) if m else None }}
+          {% set m = value | regex_findall('0-1:24\.2\.1\((-?\d+(?:\.\d+)?)\*m3\)') %}
+          {{ (m[0] | float) if m else none }}
 
       - name: "Hitaveita – Rennsli"           # -> sensor.hitaveita_rennsli
         unique_id: hitaveita_flow_lmin
         # NOTE: intentionally NO device_class. `volume_flow_rate` is unit-convertible,
         # so HA converts L/min back to m³/h (~0.05) which then rounds to 0 in cards.
         # Reporting plain L/min keeps the value readable (idle ~1, shower ~8-15).
+        # Conversion: m³/h * 1000 / 60 = L/min.
         unit_of_measurement: "L/min"
+        availability: >-
+          {{ value | regex_findall('0-1:24\.2\.2\((-?\d+(?:\.\d+)?)\*m3/h\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.2\(([0-9.]+)\*m3/h\)') %}
-          {{ ((m[0] | float) * 1000 / 60) | round(1) if m else None }}
+          {% set m = value | regex_findall('0-1:24\.2\.2\((-?\d+(?:\.\d+)?)\*m3/h\)') %}
+          {{ ((m[0] | float) * 1000 / 60) | round(1) if m else none }}
 
       - name: "Hitaveita – Framrásarhiti"     # -> sensor.hitaveita_framrasarhiti
         unique_id: hitaveita_supply_c
         device_class: temperature
         unit_of_measurement: "°C"
+        availability: >-
+          {{ value | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.3\(([0-9.]+)\*degC\)') %}
-          {{ (m[0] | float) if m else None }}
+          {% set m = value | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') %}
+          {{ (m[0] | float) if m else none }}
 
       - name: "Hitaveita – Bakrásarhiti"      # -> sensor.hitaveita_bakrasarhiti
         unique_id: hitaveita_return_c
         device_class: temperature
         unit_of_measurement: "°C"
+        availability: >-
+          {{ value | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.4\(([0-9.]+)\*degC\)') %}
-          {{ (m[0] | float) if m else None }}
+          {% set m = value | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') %}
+          {{ (m[0] | float) if m else none }}
 
       - name: "Hitaveita – Orka"              # -> sensor.hitaveita_orka
         unique_id: hitaveita_heat_wh
-        # Often a small/rolling register, not lifetime kWh. Volume is the real usage figure.
+        # NOTE: register 24.2.5 is often a small / rolling value, NOT a guaranteed
+        # lifetime-increasing counter. We therefore do NOT set a state_class, so HA
+        # will not build (potentially misleading) long-term statistics from it and
+        # will not offer it to the Energy dashboard. If you VERIFY that your meter's
+        # 24.2.5 is a monotonically increasing lifetime energy total, you may add
+        # `state_class: total_increasing` yourself. Volume (m³) is the usage figure.
         device_class: energy
-        state_class: total_increasing
         unit_of_measurement: "Wh"
+        availability: >-
+          {{ value | regex_findall('0-1:24\.2\.5\((-?\d+(?:\.\d+)?)\*Wh\)') | length > 0 }}
         value_template: >-
-          {% set m = value | regex_findall('0-1:24\.2\.5\(([0-9.]+)\*Wh\)') %}
-          {{ (m[0] | float) if m else None }}
+          {% set m = value | regex_findall('0-1:24\.2\.5\((-?\d+(?:\.\d+)?)\*Wh\)') %}
+          {{ (m[0] | float) if m else none }}
 
 # Fixed tariff price. There is no live price API for hitaveita; set this in the UI.
 input_number:
@@ -74,9 +95,12 @@ input_number:
     icon: mdi:cash
 
 # Monthly usage (resets on the 1st) -> sensor.hitaveita_rummal_manudur
+# `source` is the volume sensor's entity_id. With the Icelandic name above HA
+# generates `sensor.hitaveita_rummal`. If your install slugs it differently,
+# update this source (and the cost templates below). See README troubleshooting.
 utility_meter:
   hitaveita_manudur:
-    source: sensor.hitaveita_rummal      # = the volume sensor's entity_id (slug of its name)
+    source: sensor.hitaveita_rummal
     cycle: monthly
     name: "Hitaveita – Rúmmál (mánuður)"
 

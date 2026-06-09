@@ -99,7 +99,7 @@ and **edit two things**:
 | `sensor.hitaveita_rennsli` | Live flow (**L/min** — see gotcha #2) |
 | `sensor.hitaveita_framrasarhiti` | Supply temperature (°C) |
 | `sensor.hitaveita_bakrasarhiti` | Return temperature (°C) |
-| `sensor.hitaveita_orka` | Heat energy register (Wh) |
+| `sensor.hitaveita_orka` | Heat energy register (Wh) — **no `state_class`** (see Troubleshooting) |
 | `sensor.hitaveita_rummal_manudur` | Volume this month (resets on the 1st) |
 | `input_number.hitaveita_verd_per_m3` | Tariff (ISK/m³), set in UI |
 | `sensor.hitaveita_kostnadur_manudur` | Cost this month = monthly m³ × price |
@@ -121,10 +121,40 @@ and **edit two things**:
    ≈ 8–15 L/min).
 3. **There is no live price API for hitaveita** — it's a fixed tariff (and bills often add a standing
    charge / energy component). So price is a manual `input_number`; treat cost as an estimate.
-4. **The "energy" register (`24.2.5`) is often a small/rolling value**, not lifetime kWh — **volume
-   (m³) is the meaningful usage figure**.
+4. **The "energy" register (`24.2.5`) may not be a lifetime counter.** It is often a small / rolling
+   value, so this package sets **no `state_class`** on `sensor.hitaveita_orka` — keeping it out of
+   long-term statistics / the Energy dashboard, where a non-monotonic value would be misleading.
+   **Volume (m³) is the meaningful usage figure.** Only add `state_class: total_increasing` if you
+   have verified your meter's `24.2.5` is monotonically increasing.
 5. **The telegram has two `0-1:24.2.1(...)` lines** (a timestamp and the volume). The regex matches
    only the `*m3` one.
+
+---
+
+## Troubleshooting
+
+- **A sensor shows *Unavailable* (not 0).** Each sensor is available only when its telegram line is
+  found, so *Unavailable* means the regex did not match — usually the **wrong MBus channel**, or the
+  line is absent from your telegram. This is by design (better than a misleading `0`).
+- **Wrong MBus channel.** The package assumes `0-1`. Run
+  `curl -s http://YOUR_P1_IP/api/v1/telegram | grep -E '24\.2\.'`; if your lines start with `0-2:` or
+  `0-3:`, change `0-1` to that channel **everywhere** in `packages/hitaveita.yaml`.
+- **Local API disabled.** Enable it in the HomeWizard app -> your P1 -> *Local API*. Verify:
+  `curl -s http://YOUR_P1_IP/api` should return device info (product/firmware).
+- **Telegram endpoint unreachable.** `curl -s http://YOUR_P1_IP/api/v1/telegram | head` from a host on
+  the same network. Check the IP and that HA can reach it.
+- **Cost / monthly sensors stay empty (slug mismatch).** They reference `sensor.hitaveita_rummal`, the
+  slug HA derives from the name *"Hitaveita – Rúmmál"*. If your install generated a different
+  `entity_id` (check **Developer Tools -> States**), update
+  `utility_meter.hitaveita_manudur.source` **and** the two cost templates to match.
+- **Dashboard "Entity not found" for `sensor.p1_meter_*`.** Those electricity entities are **examples**
+  from the official HomeWizard integration and differ per install — not a bug in this package. Swap in
+  your own entity_ids (Developer Tools -> States).
+- **`Hitaveita – Orka` is missing from the Energy dashboard.** Intentional — it has no `state_class`
+  because register `24.2.5` may not be lifetime-increasing (see gotcha #4).
+- **Flow is shown in L/min, not m³/h.** Intentional: the telegram reports m³/h, which is tiny for
+  domestic use and rounds to `0` in cards. We convert `m³/h × 1000 ÷ 60 = L/min` and expose a plain
+  L/min sensor (no `device_class`, so HA does not convert it back).
 
 ---
 

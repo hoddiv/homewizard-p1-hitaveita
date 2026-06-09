@@ -10,9 +10,9 @@
 #   rennsli                 = flow
 #
 # This is NOT a billing or certified-measurement system — it is a convenience
-# monitor. Thresholds MUST be tuned per house. Alerts are time-debounced (see the
-# example automations) to avoid false alarms, and "high return temperature" only
-# fires while flow is active.
+# monitor. Thresholds MUST be tuned per house. "High return temperature" only
+# fires while flow is active. Optional alert automations (time-debounced) are in
+# docs/ALERTS.md.
 #
 # DEPENDENCY — source entity_ids (from the base package's Icelandic names):
 #   sensor.hitaveita_framrasarhiti   (supply temperature, °C)
@@ -133,57 +133,6 @@ template:
           {{ states('sensor.hitaveita_rennsli') | float(0)
              > states('input_number.hitaveita_continuous_flow_l_min') | float(0) }}
 
-# ===========================================================================
-# EXAMPLE automations — intentionally COMMENTED OUT.
-# To use: uncomment, replace `notify.mobile_app_your_phone` with YOUR notify
-# service, tune the thresholds (helpers above), then reload/restart. They are
-# time-debounced via `for:` so brief spikes don't alert.
-# ===========================================================================
-# automation:
-#   - alias: "Hitaveita – high return temperature (example)"
-#     description: "Return temp above threshold while flow is active, sustained 30 min."
-#     trigger:
-#       - platform: state
-#         entity_id: binary_sensor.hitaveita_high_return_temperature
-#         to: "on"
-#         for: "00:30:00"
-#     action:
-#       - service: notify.mobile_app_your_phone   # <-- replace with your notify service
-#         data:
-#           title: "Hitaveita: high return temperature"
-#           message: >-
-#             Return (bakrásarhiti) {{ states('sensor.hitaveita_bakrasarhiti') }}°C,
-#             delta-T {{ states('sensor.hitaveita_delta_t') }}°C.
-#     mode: single
-#
-#   - alias: "Hitaveita – poor heat extraction (example)"
-#     description: "Low delta-T while flow is active, sustained 30 min."
-#     trigger:
-#       - platform: state
-#         entity_id: binary_sensor.hitaveita_poor_heat_extraction
-#         to: "on"
-#         for: "00:30:00"
-#     action:
-#       - service: notify.mobile_app_your_phone   # <-- replace with your notify service
-#         data:
-#           title: "Hitaveita: poor heat extraction (low delta-T)"
-#           message: >-
-#             delta-T {{ states('sensor.hitaveita_delta_t') }}°C while drawing
-#             {{ states('sensor.hitaveita_rennsli') }} L/min.
-#     mode: single
-#
-#   - alias: "Hitaveita – continuous flow (example)"
-#     description: "Flow above continuous-flow threshold for 6 hours (possible abnormal usage)."
-#     trigger:
-#       - platform: state
-#         entity_id: binary_sensor.hitaveita_continuous_flow_candidate
-#         to: "on"
-#         for: "06:00:00"
-#     action:
-#       - service: notify.mobile_app_your_phone   # <-- replace with your notify service
-#         data:
-#           title: "Hitaveita: continuous flow"
-#           message: >-
-#             Flow has been above the continuous-flow threshold for 6 hours
-#             ({{ states('sensor.hitaveita_rennsli') }} L/min).
-#     mode: single
+# Alert examples (Home Assistant automations + notify options) live in
+# docs/ALERTS.md. This monitoring package is sensors/helpers only and works
+# perfectly fine without any alerts.

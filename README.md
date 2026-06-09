@@ -188,10 +188,11 @@ package) and restart. It depends on the base package's entity_ids
 - `binary_sensor.hitaveita_poor_heat_extraction` — delta-T below threshold **and** flow active.
 - `binary_sensor.hitaveita_continuous_flow_candidate` — flow above the continuous-flow threshold.
 
-**Alerts are deliberately time-based.** The package ships **example automations (commented out)** that
-fire only after a condition persists — high return / poor extraction for **30 min**, continuous flow
-for **6 h** — to avoid false alarms. Uncomment them, replace the placeholder
-`notify.mobile_app_your_phone` with your own notify service, then enable.
+**Alerts are optional and documented separately.** The monitoring package is sensors/helpers only —
+you can simply watch the warning `binary_sensor`s on a dashboard. If you *also* want to be notified,
+copy a ready-made automation from [`docs/ALERTS.md`](docs/ALERTS.md) and point it at your own
+`notify.` service (phone push, email, etc.). The examples are time-debounced (30 min / 6 h) to avoid
+false alarms. Alerts are not required for the package to work.
 
 **Why "high return only while flow is active":** a warm return reading with no draw is just standing
 water cooling slowly, not a problem — the alert is only meaningful while hot water is actually moving.

@@ -1,0 +1,11 @@
+# Local operational notes — contains LAN IPs / host details, not for publishing
+HANDOFF.md
+
+# Backups / scratch
+*.bak
+*.bak-*
+*.tmp
+
+# OS junk
+.DS_Store
+Thumbs.db

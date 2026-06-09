@@ -1,0 +1,86 @@
+# Optional Lovelace dashboard: "Orka & Hitaveita"
+# -----------------------------------------------------------------------------
+# Register as a YAML-mode dashboard (does NOT touch your existing UI dashboards).
+# In configuration.yaml:
+#
+#   lovelace:
+#     mode: storage           # keep your existing UI dashboards
+#     dashboards:
+#       orka-hitaveita:        # url slug MUST contain a hyphen
+#         mode: yaml
+#         title: "Orka & Hitaveita"
+#         icon: mdi:transmission-tower
+#         show_in_sidebar: true
+#         filename: dashboards/orka.yaml
+#
+# Electricity entities below assume the HomeWizard integration's defaults
+# (sensor.p1_meter_*). Adjust to your own entity_ids if they differ.
+# -----------------------------------------------------------------------------
+title: Orka & Hitaveita
+views:
+  - title: Yfirlit
+    path: yfirlit
+    icon: mdi:gauge
+    cards:
+      - type: entities
+        title: Hitaveita
+        state_color: true
+        entities:
+          - entity: sensor.hitaveita_rummal
+            name: Rúmmál (alls)
+          - entity: sensor.hitaveita_rummal_manudur
+            name: Rúmmál (mánuður)
+          - entity: sensor.hitaveita_rennsli
+            name: Rennsli
+          - entity: sensor.hitaveita_framrasarhiti
+            name: Framrásarhiti
+          - entity: sensor.hitaveita_bakrasarhiti
+            name: Bakrásarhiti
+          - entity: sensor.hitaveita_orka
+            name: Orka
+          - entity: sensor.hitaveita_kostnadur_manudur
+            name: Kostnaður (mánuður)
+          - entity: sensor.hitaveita_kostnadur_uppsafnadur
+            name: Kostnaður (alls)
+          - entity: input_number.hitaveita_verd_per_m3
+            name: Verð (ISK/m³)
+
+      - type: entities
+        title: Rafmagn
+        state_color: true
+        entities:
+          - entity: sensor.p1_meter_power
+            name: Afl núna
+          - entity: sensor.p1_meter_energy_import
+            name: Orkunotkun (alls)
+          - entity: sensor.p1_meter_voltage_phase_1
+            name: Spenna
+          - entity: sensor.p1_meter_current
+            name: Straumur
+          - entity: sensor.p1_meter_energy_import_cost
+            name: Kostnaður
+
+      - type: gauge
+        name: Afl núna
+        entity: sensor.p1_meter_power
+        unit: W
+        min: 0
+        max: 9000
+        severity:
+          green: 0
+          yellow: 4000
+          red: 7000
+
+      - type: gauge
+        name: Hitaveita rennsli
+        entity: sensor.hitaveita_rennsli
+        unit: L/min
+        min: 0
+        max: 20
+
+      - type: history-graph
+        title: Hitaveita hiti (24 klst)
+        hours_to_show: 24
+        entities:
+          - sensor.hitaveita_framrasarhiti
+          - sensor.hitaveita_bakrasarhiti

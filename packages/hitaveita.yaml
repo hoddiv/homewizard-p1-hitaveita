@@ -1,0 +1,105 @@
+# Hitaveita (district hot water) / HomeWizard P1 MBus heat meter -> Home Assistant
+# ---------------------------------------------------------------------------
+# Home Assistant PACKAGE. See README.md.
+#
+#   BEFORE USE, EDIT:
+#     1) YOUR_P1_IP            -> your HomeWizard P1 meter's IP address
+#     2) MBus channel "0-1"    -> confirm with: curl http://YOUR_P1_IP/api/v1/telegram | grep 24.2.
+#                                 (some meters are on 0-2 / 0-3; change everywhere if so)
+#
+# Why scrape the telegram: the P1 does NOT parse an attached MBus heat/water
+# meter into /api/v1/data ("external": []). The raw telegram does expose it on
+# 0-1:24.2.x, so we read it from there.
+# ---------------------------------------------------------------------------
+
+rest:
+  - resource: "http://YOUR_P1_IP/api/v1/telegram"
+    scan_interval: 30
+    timeout: 10
+    sensor:
+      - name: "Hitaveita – Rúmmál"            # -> sensor.hitaveita_rummal
+        unique_id: hitaveita_volume_m3
+        device_class: water
+        state_class: total_increasing
+        unit_of_measurement: "m³"
+        value_template: >-
+          {% set m = value | regex_findall('0-1:24\.2\.1\(([0-9.]+)\*m3\)') %}
+          {{ (m[0] | float) if m else None }}
+
+      - name: "Hitaveita – Rennsli"           # -> sensor.hitaveita_rennsli
+        unique_id: hitaveita_flow_lmin
+        # NOTE: intentionally NO device_class. `volume_flow_rate` is unit-convertible,
+        # so HA converts L/min back to m³/h (~0.05) which then rounds to 0 in cards.
+        # Reporting plain L/min keeps the value readable (idle ~1, shower ~8-15).
+        unit_of_measurement: "L/min"
+        value_template: >-
+          {% set m = value | regex_findall('0-1:24\.2\.2\(([0-9.]+)\*m3/h\)') %}
+          {{ ((m[0] | float) * 1000 / 60) | round(1) if m else None }}
+
+      - name: "Hitaveita – Framrásarhiti"     # -> sensor.hitaveita_framrasarhiti
+        unique_id: hitaveita_supply_c
+        device_class: temperature
+        unit_of_measurement: "°C"
+        value_template: >-
+          {% set m = value | regex_findall('0-1:24\.2\.3\(([0-9.]+)\*degC\)') %}
+          {{ (m[0] | float) if m else None }}
+
+      - name: "Hitaveita – Bakrásarhiti"      # -> sensor.hitaveita_bakrasarhiti
+        unique_id: hitaveita_return_c
+        device_class: temperature
+        unit_of_measurement: "°C"
+        value_template: >-
+          {% set m = value | regex_findall('0-1:24\.2\.4\(([0-9.]+)\*degC\)') %}
+          {{ (m[0] | float) if m else None }}
+
+      - name: "Hitaveita – Orka"              # -> sensor.hitaveita_orka
+        unique_id: hitaveita_heat_wh
+        # Often a small/rolling register, not lifetime kWh. Volume is the real usage figure.
+        device_class: energy
+        state_class: total_increasing
+        unit_of_measurement: "Wh"
+        value_template: >-
+          {% set m = value | regex_findall('0-1:24\.2\.5\(([0-9.]+)\*Wh\)') %}
+          {{ (m[0] | float) if m else None }}
+
+# Fixed tariff price. There is no live price API for hitaveita; set this in the UI.
+input_number:
+  hitaveita_verd_per_m3:
+    name: "Hitaveita – verð (ISK/m³)"
+    min: 0
+    max: 100000
+    step: 0.01
+    unit_of_measurement: "ISK/m³"
+    mode: box
+    icon: mdi:cash
+
+# Monthly usage (resets on the 1st) -> sensor.hitaveita_rummal_manudur
+utility_meter:
+  hitaveita_manudur:
+    source: sensor.hitaveita_rummal      # = the volume sensor's entity_id (slug of its name)
+    cycle: monthly
+    name: "Hitaveita – Rúmmál (mánuður)"
+
+template:
+  - sensor:
+      - name: "Hitaveita – Kostnaður (uppsafnaður)"
+        unique_id: hitaveita_kostnadur_total
+        unit_of_measurement: "ISK"
+        device_class: monetary
+        state_class: total
+        icon: mdi:cash
+        state: >-
+          {% set v = states('sensor.hitaveita_rummal') | float(0) %}
+          {% set p = states('input_number.hitaveita_verd_per_m3') | float(0) %}
+          {{ (v * p) | round(0) }}
+
+      - name: "Hitaveita – Kostnaður (mánuður)"
+        unique_id: hitaveita_kostnadur_manudur
+        unit_of_measurement: "ISK"
+        device_class: monetary
+        state_class: total
+        icon: mdi:cash
+        state: >-
+          {% set v = states('sensor.hitaveita_rummal_manudur') | float(0) %}
+          {% set p = states('input_number.hitaveita_verd_per_m3') | float(0) %}
+          {{ (v * p) | round(0) }}

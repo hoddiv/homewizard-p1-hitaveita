@@ -196,21 +196,27 @@ def main() -> None:
             print("  SKIPPED: this is a sum/total statistic. This tool only backfills "
                   "mean-type statistics; importing sums risks corrupting the cumulative series.")
             continue
-        cur.execute("SELECT COUNT(*), MIN(start_ts) FROM statistics WHERE metadata_id=?", (mid,))
-        have, earliest = cur.fetchone()
-        if earliest:
-            print("  existing statistics: %d rows, earliest %s"
-                  % (have, dt.datetime.fromtimestamp(earliest, dt.timezone.utc)
-                     .strftime("%Y-%m-%d %H:%M")))
+        # Exclude hours that already exist, by exact timestamp rather than by
+        # MIN(start_ts): an import that failed or was interrupted part-way leaves
+        # the OLDEST hours present, so a "< earliest" filter would discard every
+        # hour still missing and report nothing left to do.
+        cur.execute("SELECT start_ts FROM statistics WHERE metadata_id=?", (mid,))
+        existing = {int(r[0]) for r in cur.fetchall()}
+        if existing:
+            print("  existing statistics: %d hourly rows, %s .. %s"
+                  % (len(existing),
+                     dt.datetime.fromtimestamp(min(existing), dt.timezone.utc).strftime("%Y-%m-%d %H:%M"),
+                     dt.datetime.fromtimestamp(max(existing), dt.timezone.utc).strftime("%Y-%m-%d %H:%M")))
 
         rows = hourly_stats(cur, entity, cutoff)
         if not rows:
             print("  no recorder history found")
             continue
-        if earliest:
+        if existing:
             rows = [r for r in rows
-                    if dt.datetime.fromisoformat(r["start"]).timestamp() < earliest]
-            print("  (restricted to hours before the existing statistics)")
+                    if int(dt.datetime.fromisoformat(r["start"]).timestamp()) not in existing]
+            print("  (skipping hours that already have statistics; safe to re-run "
+                  "after a partial import)")
         if not rows:
             print("  nothing to backfill")
             continue

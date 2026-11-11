@@ -153,6 +153,17 @@ tools/temp_averages.py --days 365 --windows 30,365
 tools/temp_averages.py --daily 14      # per-day breakdown
 ```
 
+It defaults to the entity_ids this package creates. **If you renamed the sensors**, Home Assistant
+slugifies the *name*, so the entity_ids change and the defaults will match nothing — pass them
+explicitly:
+
+```
+tools/temp_averages.py \
+    --supply sensor.my_supply_temperature \
+    --return-entity sensor.my_return_temperature \
+    --flow sensor.my_flow
+```
+
 It reads HA's recorder over SSH, needs no config changes, and reports both plain and
 flow-weighted averages.
 

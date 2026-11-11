@@ -35,9 +35,12 @@ import subprocess
 import sys
 import urllib.parse
 
-SUPPLY = "sensor.hot_water_supply_temperature"   # Framrásarhiti
-RETURN = "sensor.hot_water_return_temperature"   # Bakrásarhiti
-FLOW = "sensor.hitaveita_rennsli_m3h"            # optional, for flow weighting
+# Defaults match the entity_ids packages/hitaveita.yaml creates. Override them
+# if you renamed the entities (HA slugifies the sensor *name*, so a rename in the
+# entity registry leaves these pointing at nothing and every day is skipped).
+SUPPLY = "sensor.hitaveita_framrasarhiti"   # Framrásarhiti
+RETURN = "sensor.hitaveita_bakrasarhiti"    # Bakrásarhiti
+FLOW = "sensor.hitaveita_rennsli"           # optional, used only as a weight
 
 REMOTE = r'''
 import json, os, urllib.request, urllib.parse
@@ -77,12 +80,16 @@ def step_hold(pts, grid):
 
 
 def parse_block(block):
+    """-> [(timestamp, value|None)]. `unavailable`/`unknown` is kept as a None
+    transition rather than dropped: dropping it would make step_hold() extend the
+    previous reading across the whole outage, counting missing measurements as
+    observed ones and applying stale flow weights."""
     pts = []
     for s in block:
         try:
             v = float(s["state"])
         except (TypeError, ValueError):
-            continue
+            v = None
         t = dt.datetime.fromisoformat(s["last_changed"].replace("Z", "+00:00")).timestamp()
         pts.append((t, v))
     return pts
@@ -118,9 +125,15 @@ def main() -> None:
                     help="comma-separated trailing windows to report")
     ap.add_argument("--daily", type=int, default=0, help="also print the N most recent days")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--supply", default=SUPPLY, help="supply temperature entity_id")
+    ap.add_argument("--return-entity", dest="return_entity", default=RETURN,
+                    help="return temperature entity_id")
+    ap.add_argument("--flow", default=FLOW,
+                    help="flow entity_id, used only as a weight (any unit)")
     args = ap.parse_args()
 
-    ents = ",".join([SUPPLY, RETURN, FLOW])
+    supply, ret, flow = args.supply, args.return_entity, args.flow
+    ents = ",".join([supply, ret, flow])
     now = dt.datetime.now(dt.timezone.utc)
     per_day = []
     for d in range(args.days):
@@ -134,14 +147,19 @@ def main() -> None:
         for blk in blocks:
             if blk:
                 pts[blk[0]["entity_id"]] = parse_block(blk)
-        if not pts.get(RETURN):
+        if not pts.get(ret):
             continue
         grid = [a.timestamp() + i * 60 for i in range(1440)]
-        S = step_hold(pts.get(SUPPLY, []), grid)
-        R = step_hold(pts.get(RETURN, []), grid)
-        F = step_hold(pts.get(FLOW, []), grid)
+        S = step_hold(pts.get(supply, []), grid)
+        R = step_hold(pts.get(ret, []), grid)
+        F = step_hold(pts.get(flow, []), grid)
         rows = [(s, r, f) for s, r, f in zip(S, R, F) if s is not None and r is not None]
         per_day.append((d, a, rows))
+
+    if not per_day:
+        print("No data for %s / %s. If you renamed these entities, pass --supply / "
+              "--return-entity (see --help)." % (supply, ret), file=sys.stderr)
+        sys.exit(1)
 
     windows = [int(w) for w in args.windows.split(",") if w.strip()]
     result = {"generated": now.isoformat(timespec="seconds"), "windows": {}, "daily": []}

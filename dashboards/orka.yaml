@@ -22,45 +22,91 @@ views:
     path: yfirlit
     icon: mdi:gauge
     cards:
-      # Averages. A spot reading of the return temperature is a poor answer to
-      # "what bakrás do you get?" - it can swing 15 K within a day.
-      # Needs `state_class: measurement` on the temperatures (set in
-      # packages/hitaveita.yaml). The ΔT card needs sensor.hitaveita_delta_t from
-      # the optional packages/hitaveita_monitor.yaml - drop that card if you do
-      # not run it. Statistics only accrue from the moment you enable them;
-      # there is no backfill, so these read empty at first.
+      # --- Averages -------------------------------------------------------
+      # Two rows, same metrics over two windows. The PERIOD is the row heading
+      # and the tile names stay short on purpose: three statistic cards across
+      # leaves room for roughly six characters on a phone, so a name like
+      # "Bakrás 30 d" truncates to "Bakrá…" and the two windows become
+      # indistinguishable. Needs `state_class: measurement` on the temperatures;
+      # the ΔT tiles need sensor.hitaveita_delta_t from the optional
+      # packages/hitaveita_monitor.yaml - drop them if you do not run it.
+      # Statistics only accrue once enabled; see docs/AVERAGING.md for how to
+      # backfill them from recorder history you already have.
+      - type: markdown
+        content: >-
+          ### Meðaltöl
+
+
+          A spot reading says little - the return temperature swings ~15 °C over
+          a day. **ΔT** (supply − return) is the best number for comparing with
+          other houses; the supply temperature is set by the utility.
+      - type: markdown
+        content: "**Last 30 days**"
       - type: horizontal-stack
         cards:
           - type: statistic
             entity: sensor.hitaveita_bakrasarhiti
             stat_type: mean
-            name: Bakrás — 30 d
+            name: Bakrás
             period:
               rolling_window:
-                duration: { days: 30 }
+                duration:
+                  days: 30
           - type: statistic
-            entity: sensor.hitaveita_bakrasarhiti
+            entity: sensor.hitaveita_framrasarhiti
             stat_type: mean
-            name: Bakrás — 365 d
+            name: Framrás
             period:
               rolling_window:
-                duration: { days: 365 }
+                duration:
+                  days: 30
           - type: statistic
             entity: sensor.hitaveita_delta_t
             stat_type: mean
-            name: ΔT — 365 d
+            name: ΔT
             period:
               rolling_window:
-                duration: { days: 365 }
-
+                duration:
+                  days: 30
+      - type: markdown
+        content: "**Last 365 days**"
+      - type: horizontal-stack
+        cards:
+          - type: statistic
+            entity: sensor.hitaveita_bakrasarhiti
+            stat_type: mean
+            name: Bakrás
+            period:
+              rolling_window:
+                duration:
+                  days: 365
+          - type: statistic
+            entity: sensor.hitaveita_framrasarhiti
+            stat_type: mean
+            name: Framrás
+            period:
+              rolling_window:
+                duration:
+                  days: 365
+          - type: statistic
+            entity: sensor.hitaveita_delta_t
+            stat_type: mean
+            name: ΔT
+            period:
+              rolling_window:
+                duration:
+                  days: 365
       - type: statistics-graph
-        title: Framrás / bakrás (daglegt meðaltal)
+        title: Framrás / bakrás - daily mean
         entities:
           - sensor.hitaveita_framrasarhiti
           - sensor.hitaveita_bakrasarhiti
         days_to_show: 365
         period: day
-        stat_types: [mean, min, max]
+        stat_types:
+          - mean
+          - min
+          - max
 
       - type: entities
         title: Hitaveita

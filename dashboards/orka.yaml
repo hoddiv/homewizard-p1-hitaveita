@@ -22,6 +22,43 @@ views:
     path: yfirlit
     icon: mdi:gauge
     cards:
+      # Averages. A spot reading of the return temperature is a poor answer to
+      # "what bakrás do you get?" - it can swing 15 K within a day.
+      # Needs `state_class: measurement` on the temperatures and on ΔT; statistics
+      # only accrue from the moment you add it, there is no backfill.
+      - type: horizontal-stack
+        cards:
+          - type: statistic
+            entity: sensor.hitaveita_bakrasarhiti
+            stat_type: mean
+            name: Bakrás — 30 d
+            period:
+              rolling_window:
+                duration: { days: 30 }
+          - type: statistic
+            entity: sensor.hitaveita_bakrasarhiti
+            stat_type: mean
+            name: Bakrás — 365 d
+            period:
+              rolling_window:
+                duration: { days: 365 }
+          - type: statistic
+            entity: sensor.hitaveita_delta_t
+            stat_type: mean
+            name: ΔT — 365 d
+            period:
+              rolling_window:
+                duration: { days: 365 }
+
+      - type: statistics-graph
+        title: Framrás / bakrás (daglegt meðaltal)
+        entities:
+          - sensor.hitaveita_framrasarhiti
+          - sensor.hitaveita_bakrasarhiti
+        days_to_show: 365
+        period: day
+        stat_types: [mean, min, max]
+
       - type: entities
         title: Hitaveita
         state_color: true

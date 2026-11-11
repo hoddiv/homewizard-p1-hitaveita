@@ -1,6 +1,13 @@
 # Local operational notes — contains LAN IPs / host details, not for publishing
 HANDOFF.md
 
+# Credentials — never commit
+.env
+
+# Private: LoRaWAN/TTN side of the setup is not part of this public project
+docs/LORAWAN.md
+packages/lorawan.yaml
+
 # Backups / scratch
 *.bak
 *.bak-*

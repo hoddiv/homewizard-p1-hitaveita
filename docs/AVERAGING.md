@@ -67,9 +67,29 @@ recorder history, which is purged (10 days by default). Add `state_class: measur
 
 HA then stores hourly and daily mean/min/max indefinitely, surviving recorder purges.
 
-> **This does not backfill.** Statistics are generated from the moment you add it, so a 365-day
-> average will not be available for a year. Until then, use `tools/temp_averages.py`, which reads
-> raw recorder history and works today (as far back as your `purge_keep_days` allows).
+> **Home Assistant does not backfill this by itself.** Statistics are generated from the moment
+> you add `state_class`, so a 365-day average would normally read empty for a year — even though
+> the recorder already holds months of raw history for that entity.
+>
+> **You can rebuild it:** `tools/backfill_statistics.py` reconstructs the missing hourly
+> statistics (time-weighted mean, min, max) from the `states` table and imports them through the
+> supported `recorder/import_statistics` websocket command. On the reference installation this
+> recovered **3 273 hourly points back to 28 June** — 4.5 months — so the 30-day and 365-day cards
+> had real values immediately instead of in a year's time.
+>
+> It runs on the Home Assistant machine, is a dry run unless you pass `--import`, never touches the
+> current hour, and refuses sum/total statistics (it only handles mean-type, so it cannot corrupt a
+> cumulative series the way an energy counter can):
+>
+> ```
+> scp tools/backfill_statistics.py root@homeassistant.local:/tmp/
+> ssh root@homeassistant.local 'python3 /tmp/backfill_statistics.py \
+>     --entities sensor.hitaveita_framrasarhiti,sensor.hitaveita_bakrasarhiti'
+> # check the dry run, then repeat with --import
+> ```
+>
+> `tools/temp_averages.py` remains useful either way — it reads raw recorder history directly and
+> needs no config change at all.
 
 ### 2. A ΔT sensor — you may already have it
 

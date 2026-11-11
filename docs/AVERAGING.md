@@ -71,26 +71,16 @@ HA then stores hourly and daily mean/min/max indefinitely, surviving recorder pu
 > average will not be available for a year. Until then, use `tools/temp_averages.py`, which reads
 > raw recorder history and works today (as far back as your `purge_keep_days` allows).
 
-### 2. A ΔT sensor
+### 2. A ΔT sensor — you may already have it
 
-ΔT is the number worth comparing, so make it a real sensor and it gets long-term statistics too:
+ΔT is the number worth comparing, and it needs `state_class: measurement` too so that it gets
+long-term statistics. **The optional `packages/hitaveita_monitor.yaml` already provides it** as
+`sensor.hitaveita_delta_t`, correctly configured (no `device_class`, because marking a temperature
+*difference* as `temperature` would apply the absolute °C↔°F conversion with its +32 offset).
 
-```yaml
-template:
-  - sensor:
-      - name: "Hitaveita – ΔT"
-        unique_id: hitaveita_delta_t
-        # No device_class: this is a temperature *difference*, and marking it
-        # `temperature` invites HA to unit-convert it as if it were absolute.
-        state_class: measurement
-        unit_of_measurement: "°C"
-        availability: >-
-          {{ is_number(states('sensor.hitaveita_framrasarhiti'))
-             and is_number(states('sensor.hitaveita_bakrasarhiti')) }}
-        state: >-
-          {{ (states('sensor.hitaveita_framrasarhiti') | float
-              - states('sensor.hitaveita_bakrasarhiti') | float) | round(1) }}
-```
+If you run the monitoring package, there is nothing to add — just use that entity. Do **not**
+define your own with `unique_id: hitaveita_delta_t` as well; Home Assistant will refuse the second
+one as a duplicate.
 
 ### 3. Dashboard cards
 

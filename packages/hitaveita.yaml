@@ -125,24 +125,6 @@ utility_meter:
 
 template:
   - sensor:
-      # Supply minus return: the heat you actually extracted from each m³.
-      # Hitaveita is billed by VOLUME, so this is the efficiency number - and the
-      # one worth comparing with other households, since the supply temperature
-      # is set by the utility, not by your house. See docs/AVERAGING.md.
-      - name: "Hitaveita – ΔT"
-        unique_id: hitaveita_delta_t
-        # No device_class on purpose: this is a temperature *difference*, and
-        # marking it `temperature` invites HA to unit-convert it as if absolute.
-        state_class: measurement
-        unit_of_measurement: "°C"
-        icon: mdi:delta
-        availability: >-
-          {{ is_number(states('sensor.hitaveita_framrasarhiti'))
-             and is_number(states('sensor.hitaveita_bakrasarhiti')) }}
-        state: >-
-          {{ (states('sensor.hitaveita_framrasarhiti') | float
-              - states('sensor.hitaveita_bakrasarhiti') | float) | round(1) }}
-
       - name: "Hitaveita – Kostnaður (uppsafnaður)"
         unique_id: hitaveita_kostnadur_total
         unit_of_measurement: "ISK"

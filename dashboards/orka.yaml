@@ -24,8 +24,11 @@ views:
     cards:
       # Averages. A spot reading of the return temperature is a poor answer to
       # "what bakrás do you get?" - it can swing 15 K within a day.
-      # Needs `state_class: measurement` on the temperatures and on ΔT; statistics
-      # only accrue from the moment you add it, there is no backfill.
+      # Needs `state_class: measurement` on the temperatures (set in
+      # packages/hitaveita.yaml). The ΔT card needs sensor.hitaveita_delta_t from
+      # the optional packages/hitaveita_monitor.yaml - drop that card if you do
+      # not run it. Statistics only accrue from the moment you enable them;
+      # there is no backfill, so these read empty at first.
       - type: horizontal-stack
         cards:
           - type: statistic

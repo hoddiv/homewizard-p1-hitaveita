@@ -110,6 +110,20 @@ and **edit two things**:
 
 ---
 
+## Comparing with other households
+
+"What return temperature are you getting?" is a common question, and a spot reading is a poor
+answer — it can swing 15 K within a day. **[docs/AVERAGING.md](docs/AVERAGING.md)** covers which
+number is actually comparable (ΔT, not the utility-controlled supply temperature), how long a
+window to average over, long-term statistics vs recorder, ready-made dashboard cards, and
+`tools/temp_averages.py`, which computes the figures straight from recorder history with no
+config changes, plus `tools/backfill_statistics.py`, which rebuilds long-term statistics from
+recorder history you already have — so a 365-day average card works today instead of in a year.
+
+It also explains **how to check what unit your energy register really reports** — some meters
+label it `*Wh` in the telegram while the value is MWh — and why you cannot fix that by editing
+`unit_of_measurement` on a `total_increasing` sensor.
+
 ## Gotchas we hit (so you don't have to)
 
 1. **`/api/v1/data` won't show the heat meter** (`external: []`). Use the telegram. *(If HomeWizard

@@ -50,6 +50,10 @@ rest:
       - name: "Hitaveita – Framrásarhiti"     # -> sensor.hitaveita_framrasarhiti
         unique_id: hitaveita_supply_c
         device_class: temperature
+        # Keeps hourly/daily mean+min+max forever, so you can answer
+        # "what return temperature do you get?" with an average rather
+        # than a spot reading. See docs/AVERAGING.md.
+        state_class: measurement
         unit_of_measurement: "°C"
         availability: >-
           {{ (value or '') | regex_findall('0-1:24\.2\.3\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
@@ -60,6 +64,10 @@ rest:
       - name: "Hitaveita – Bakrásarhiti"      # -> sensor.hitaveita_bakrasarhiti
         unique_id: hitaveita_return_c
         device_class: temperature
+        # Keeps hourly/daily mean+min+max forever, so you can answer
+        # "what return temperature do you get?" with an average rather
+        # than a spot reading. See docs/AVERAGING.md.
+        state_class: measurement
         unit_of_measurement: "°C"
         availability: >-
           {{ (value or '') | regex_findall('0-1:24\.2\.4\((-?\d+(?:\.\d+)?)\*degC\)') | length > 0 }}
@@ -75,6 +83,17 @@ rest:
         # will not offer it to the Energy dashboard. If you VERIFY that your meter's
         # 24.2.5 is a monotonically increasing lifetime energy total, you may add
         # `state_class: total_increasing` yourself. Volume (m³) is the usage figure.
+        #
+        # ALSO VERIFY THE UNIT. Some meters mislabel this register: one known
+        # example reports "*Wh" in the telegram while the value is actually MWh,
+        # a factor of 1e6. Two checks (docs/AVERAGING.md):
+        #   (a) lifetime volume x ~50 kWh/m³ should land near the reading;
+        #   (b) over a week, implied_dT = dEnergy_kWh / (dVolume_m³ x 1.163)
+        #       should match the ΔT your thermometers show.
+        # If it is wrong, note that you CANNOT fix it by editing
+        # unit_of_measurement alone on a total_increasing sensor: Wh and MWh are
+        # inter-convertible, so HA rescales the value while the recorded history
+        # stays on the old scale, which records a huge bogus spike.
         device_class: energy
         unit_of_measurement: "Wh"
         availability: >-
